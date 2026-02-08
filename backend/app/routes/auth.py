@@ -5,6 +5,8 @@ from app.models.user import User
 from app.core.security import hash_password, verify_password
 from app.core.jwt import create_access_token
 from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordRequestForm
+
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -47,12 +49,13 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
 
 # login router
 @router.post("/login")
-def login(request: LoginRequest, db: Session = Depends(get_db)):
-    email = request.email
-    password = request.password
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == form_data.username).first()
 
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+    if not user or not verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": user.email})
